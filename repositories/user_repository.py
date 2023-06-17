@@ -22,9 +22,7 @@ class UserRepository:
 
     def get_users_in_radius(self, longitude, latitude, radius):
         # Calculate the bounding box of the search area
-        print(longitude, latitude, radius)
         bbox = self.calculate_bounding_box(latitude, longitude, radius)
-        print(bbox)
         # Query the database for users within the bounding box
         users = (
             db.query(User)
