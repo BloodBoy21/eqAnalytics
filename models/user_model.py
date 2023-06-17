@@ -1,5 +1,5 @@
 from shared.db import db
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Float
 
 
 class User(db):
@@ -8,5 +8,5 @@ class User(db):
     user_id = Column(String)
     email = Column(String)
     country_code = Column(String, index=True)
-    lat = Column(float)
-    lon = Column(float)
+    lat = Column(Float)
+    lon = Column(Float)

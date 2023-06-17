@@ -1,10 +1,12 @@
 from models.user_model import User
-import math
+from shared.db import get_db
+from math import radians, degrees, sin, cos, asin
 
+db = get_db()
 user_repository = None
 
 
-class EarthquakeRepository:
+class UserRepository:
     def __init__(self) -> None:
         pass
 
@@ -12,7 +14,7 @@ class EarthquakeRepository:
     def get_instance():
         global user_repository
         if not user_repository:
-            user_repository = EarthquakeRepository()
+            user_repository = UserRepository()
         return user_repository
 
     def get_user_by_id(self, user_id):
@@ -20,50 +22,39 @@ class EarthquakeRepository:
 
     def get_users_in_radius(self, longitude, latitude, radius):
         # Calculate the bounding box of the search area
-        bbox = self.get_bounding_box(longitude, latitude, radius)
-
+        print(longitude, latitude, radius)
+        bbox = self.calculate_bounding_box(latitude, longitude, radius)
+        print(bbox)
         # Query the database for users within the bounding box
-        users = User.query.filter(
-            User.lon.between(bbox["min_lon"], bbox["max_lon"]),
-            User.lat.between(bbox["min_lat"], bbox["max_lat"]),
-        ).all()
-
-        # Filter the users by distance from the center point
-        users = [
-            user
-            for user in users
-            if self.distance(user.lon, user.lat, longitude, latitude) <= radius
-        ]
+        users = (
+            db.query(User)
+            .filter(
+                User.lon.between(bbox["min_lon"], bbox["max_lon"]),
+                User.lat.between(bbox["min_lat"], bbox["max_lat"]),
+            )
+            .all()
+        )
 
         return users
 
-    def get_bounding_box(self, longitude, latitude, radius):
-        # Calculate the bounding box of the search area
-        earth_radius = 6371  # km
-        lat_range = radius / earth_radius * (180 / math.pi)
-        lon_range = lat_range / math.cos(latitude * (math.pi / 180))
-        min_lat = latitude - lat_range
-        max_lat = latitude + lat_range
-        min_lon = longitude - lon_range
-        max_lon = longitude + lon_range
+    def calculate_bounding_box(self, center_lat, center_lon, radius_km):
+        # Convert center latitude, longitude, and radius to radians
+        center_lat_rad = radians(center_lat)
+        center_lon_rad = radians(center_lon)
+        radius_rad = radius_km / 6371.0  # Approximate radius of the Earth (in km)
+
+        # Calculate minimum and maximum latitude
+        min_lat = degrees(center_lat_rad - radius_rad)
+        max_lat = degrees(center_lat_rad + radius_rad)
+
+        # Calculate minimum and maximum longitude
+        delta_lon = asin(sin(radius_rad) / cos(center_lat_rad))
+        min_lon = degrees(center_lon_rad - delta_lon)
+        max_lon = degrees(center_lon_rad + delta_lon)
+
         return {
             "min_lat": min_lat,
             "max_lat": max_lat,
             "min_lon": min_lon,
             "max_lon": max_lon,
         }
-
-    def distance(self, lon1, lat1, lon2, lat2):
-        # Calculate the distance between two points on the Earth's surface
-        earth_radius = 6371  # km
-        dlon = math.radians(lon2 - lon1)
-        dlat = math.radians(lat2 - lat1)
-        a = (
-            math.sin(dlat / 2) ** 2
-            + math.cos(math.radians(lat1))
-            * math.cos(math.radians(lat2))
-            * math.sin(dlon / 2) ** 2
-        )
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        distance = earth_radius * c
-        return distance
