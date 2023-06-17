@@ -29,16 +29,17 @@ class NotificationService(ServiceBase):
     def get_instance():
         global notification_service
         if not notification_service:
-            notification_service = NotificationService()
+            notification_service = NotificationService(None)
         return notification_service
 
     def send(self, data):
-        self.addToQueue(data)
+        self.queue.put(data)
         self.__emit()
 
     def __emit(self):
-        data = self.queue.get()
-        if not data:
+        try:
+            data = self.queue.get(block=False)
+        except queue.Empty:
             return
         notification_producer.produce(data)
         self.__emit()
