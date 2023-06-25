@@ -2,13 +2,12 @@ from models.user_model import User
 from shared.db import get_db
 from math import radians, degrees, sin, cos, asin
 
-db = get_db()
 user_repository = None
 
 
 class UserRepository:
     def __init__(self) -> None:
-        pass
+        self.session = get_db()
 
     @staticmethod
     def get_instance():
@@ -17,15 +16,31 @@ class UserRepository:
             user_repository = UserRepository()
         return user_repository
 
-    def get_user_by_id(self, user_id):
-        return User.query.filter_by(user_id=user_id).first()
+    def create(self, data: dict):
+        user = User(**data)
+        return self.save(user)
+
+    def update_location(self, data: dict):
+        user = self.get_user_by_id(data.get("user_id"))
+        user.lat = data.get("lat")
+        user.lon = data.get("lon")
+        return self.save(user)
+
+    def save(self, row):
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return row
+
+    def get_user_by_id(self, user_id) -> User:
+        return self.session.query(User).filter_by(user_id=user_id).first()
 
     def get_users_in_radius(self, longitude, latitude, radius):
         # Calculate the bounding box of the search area
         bbox = self.calculate_bounding_box(latitude, longitude, radius)
         # Query the database for users within the bounding box
         users = (
-            db.query(User)
+            self.session.query(User)
             .filter(
                 User.lon.between(bbox["min_lon"], bbox["max_lon"]),
                 User.lat.between(bbox["min_lat"], bbox["max_lat"]),

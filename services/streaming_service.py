@@ -3,14 +3,16 @@ from aiokafka import AIOKafkaConsumer
 import asyncio
 from configs.earthquakeKafka import get_conf
 from services.earthquake_service import EarthquakeService
+from services.user_service import UserService
 
 EarthquakeService = EarthquakeService.get_instance()
+UserService = UserService.get_instance()
 
 
 async def consume():
     conf = get_conf()
     consumer = AIOKafkaConsumer(
-        conf.get("topics"),
+        *conf.get("topics"),
         bootstrap_servers=conf.get("bootstrap.servers"),  # type: ignore
         group_id=conf.get("group.id"),
     )
@@ -23,7 +25,8 @@ async def consume():
             topic = message.topic
             data = message.value if message else ""
             data = str(data, "utf-8")  # type: ignore
-            services = {"earthquake": EarthquakeService}
+            print(f"service: {topic} - data: {data}")
+            services = {"earthquake": EarthquakeService, "user_eq": UserService}
             services[topic].consume(data)
 
     finally:
